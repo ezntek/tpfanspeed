@@ -1,3 +1,5 @@
+mod components;
+
 use gtk::prelude::*;
 
 pub struct DashboardPage {}
@@ -12,31 +14,15 @@ impl DashboardPage {
     }
 
     pub fn setup_ui(&self) -> impl IsA<gtk::Widget> {
-        let temp_frame = gtk::Frame::new(Some("Temperatures"));
+        let temp_frame = components::TemperatureFrame::new();
 
-        temp_frame.set_child(Some(&gtk::Label::new(Some(
-            "the contents of the temperature frame",
-        ))));
-
-        let fancontrol_frame = gtk::Frame::builder()
-            .label("Fan Control")
-            .hexpand(true)
-            .vexpand(true)
-            .build();
-
-        fancontrol_frame.set_child(Some(&gtk::Label::new(Some(
-            "the contents of the fan control frame",
-        ))));
+        let fancontrol_frame = components::FancontrolFrame::new();
 
         let log_frame = gtk::Frame::builder()
             .label("Log")
             .hexpand(true)
             .margin_top(10)
             .build();
-
-        fancontrol_frame.set_child(Some(&gtk::Label::new(Some(
-            "the contents of the fan control frame",
-        ))));
 
         log_frame.set_child(Some(&gtk::Label::new(Some(
             "the contents of the log frame",
@@ -57,9 +43,9 @@ impl DashboardPage {
             .margin_start(10)
             .build();
 
-        vbox.append(&fancontrol_frame);
+        vbox.append(&fancontrol_frame.setup_ui());
         vbox.append(&log_frame);
-        hbox.append(&temp_frame);
+        hbox.append(&temp_frame.setup_ui());
         hbox.append(&vbox);
 
         hbox
