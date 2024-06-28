@@ -406,6 +406,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97b3888a4aecf77e811145cadf6eef5901f4782c53886191b2f693f24761847c"
 
 [[package]]
+name = "libtpfanspeed"
+version = "0.1.0"
+
+[[package]]
 name = "memchr"
 version = "2.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -647,6 +651,7 @@ dependencies = [
 name = "tpfanspeed"
 version = "0.1.0"
 dependencies = [
+ "glib",
  "gtk4",
 ]
 
