@@ -2,11 +2,11 @@ use gtk::prelude::*;
 
 pub struct TemperatureFrame {}
 
-pub struct TemperatureUnit {
+pub struct Temperature {
     core_id: u16,
 }
 
-impl TemperatureUnit {
+impl Temperature {
     pub fn new(core_id: u16) -> Self {
         Self { core_id }
     }
@@ -51,7 +51,7 @@ impl TemperatureFrame {
         let vbox = gtk::Box::new(gtk::Orientation::Vertical, 5);
 
         for core in 0..28 as u16 {
-            let unit = TemperatureUnit::new(core);
+            let unit = Temperature::new(core);
             vbox.append(&unit.setup_ui());
         }
 
