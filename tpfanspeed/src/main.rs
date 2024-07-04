@@ -12,8 +12,10 @@ fn on_activate(app: &gtk::Application) {
 }
 
 fn main() {
-    let app = gtk::Application::builder().application_id(APP_ID).build();
+    //let app = gtk::Application::builder().application_id(APP_ID).build();
 
-    app.connect_activate(on_activate);
-    app.run();
+    //app.connect_activate(on_activate);
+    //app.run();
+    let temps = libtpfanspeed::get_temps();
+    println!("{:?}", temps);
 }

@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 gtk = { version = "0.8.2", package = "gtk4", features = ["v4_12"] }
 glib = "0.19.9"
+libtpfanspeed = { path = "../libtpfanspeed" }
