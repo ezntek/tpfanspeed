@@ -6,6 +6,7 @@ pub struct DashboardPage {}
 
 pub struct AboutPage {}
 
+#[derive(Default)]
 pub struct TPFanSpeed {}
 
 impl DashboardPage {
