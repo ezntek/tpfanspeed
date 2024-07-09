@@ -1,5 +1,7 @@
 pub mod fancontrol;
-pub mod temperature;
+pub mod tempbox;
+pub mod tempframe;
 
 pub use fancontrol::*;
-pub use temperature::*;
+pub use tempbox::*;
+pub use tempframe::*;

@@ -4,6 +4,8 @@ use std::{
     io::{ErrorKind, Read, Write},
 };
 
+use serde_json::Value;
+
 #[derive(Debug, Clone, Copy)]
 pub struct CoreTemperature {
     pub temp: u8,
@@ -178,6 +180,46 @@ pub fn get_temps() -> Temperatures {
         let coretemp = CoreTemperature::new(temp, max, critical);
 
         res.cores.insert(k.to_owned(), coretemp);
+    }
+
+    res
+}
+
+pub fn get_cores() -> Vec<u8> {
+    // modern ThinkPads may have weird core ids
+
+    let output = std::process::Command::new("sensors")
+        .arg("-j")
+        .output()
+        .unwrap();
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    let json_value: Value = serde_json::from_str(&stdout).unwrap();
+
+    let coretemps = json_value
+        .get("coretemp-isa-0000")
+        .expect("failed to find key")
+        .as_object()
+        .expect("failed to find key");
+
+    let mut res = Vec::new();
+
+    for (key, value) in coretemps {
+        let k = key.as_str();
+
+        if !k.contains("Core ") {
+            continue;
+        }
+
+        let coreid = k
+            .split_once(" ")
+            .expect("expected Core and an ID")
+            .1
+            .parse::<u8>()
+            .expect("ID should be a valid number");
+
+        res.push(coreid)
     }
 
     res
