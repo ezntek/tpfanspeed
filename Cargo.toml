@@ -2,5 +2,6 @@
 
 members = [
     "tpfanspeed",
+    "tpfanctl",
     "libtpfanspeed",
 ]

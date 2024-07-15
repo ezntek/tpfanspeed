@@ -26,7 +26,7 @@ impl ObjectImpl for TemperatureFrame {
 
         let vbox = gtk::Box::new(gtk::Orientation::Vertical, 5);
 
-        for core in libtpfs::get_cores() {
+        for core in libtpfs::get_cores().unwrap() {
             let _box = super::TemperatureBox::new(format!("CORE {core}"));
             let box_refcell = RefCell::new(_box);
         }

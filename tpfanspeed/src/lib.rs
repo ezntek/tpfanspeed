@@ -46,7 +46,7 @@ impl DashboardPage {
 
         vbox.append(&fancontrol_frame.setup_ui());
         vbox.append(&log_frame);
-        hbox.append(&temp_frame.setup_ui());
+        //hbox.append(&temp_frame.setup_ui());
         hbox.append(&vbox);
 
         hbox

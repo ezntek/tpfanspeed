@@ -1,8 +1,12 @@
+pub mod error;
+
 use std::{
     collections::HashMap,
     fs::OpenOptions,
-    io::{ErrorKind, Read, Write},
+    io::{self, Read, Write},
 };
+
+use error::*;
 
 use serde_json::Value;
 
@@ -18,13 +22,54 @@ pub struct Temperatures {
     pub avg: u8,
     pub cores: HashMap<String, CoreTemperature>,
 }
-
 #[derive(Debug, Clone, Copy)]
 pub enum FanSpeed {
     Level(u8),
     FullSpeed,
     Disengaged,
     Auto,
+}
+
+const VALID_SPEEDS: &'static str =
+    "Valid fan speeds range from 0-7, auto, full-speed and disengaged";
+
+impl std::fmt::Display for FanSpeed {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use FanSpeed as F;
+
+        let s = match &self {
+            F::Auto => "auto".to_string(),
+            F::Disengaged => "disengaged".to_string(),
+            F::Level(val) => val.to_string(),
+            F::FullSpeed => "full-speed".to_string(),
+        };
+
+        write!(f, "{s}")
+    }
+}
+
+impl std::fmt::Display for CoreTemperature {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}°C (max {}, crit {})",
+            self.temp, self.max, self.critical
+        )
+    }
+}
+
+impl std::fmt::Display for Temperatures {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Average: {}°C\n", self.avg)?;
+        for (i, (corename, coretemp)) in self.cores.iter().enumerate() {
+            write!(f, "{}: {}", corename, coretemp)?;
+
+            if i != self.cores.len() - 1 {
+                write!(f, "\n")?;
+            }
+        }
+        Ok(())
+    }
 }
 
 impl CoreTemperature {
@@ -46,60 +91,132 @@ impl Temperatures {
     }
 }
 
-impl ToString for FanSpeed {
-    fn to_string(&self) -> String {
-        use FanSpeed as F;
+impl FanSpeed {
+    pub fn from_string(value: String) -> Result<Self, Error> {
+        let parsed = value.parse::<u8>();
 
-        match &self {
-            F::Auto => "auto".to_string(),
-            F::Disengaged => "disengaged".to_string(),
-            F::Level(val) => val.to_string(),
-            F::FullSpeed => "full-speed".to_string(),
+        use std::num::IntErrorKind as I;
+        match parsed {
+            Err(e) => match e.kind() {
+                I::NegOverflow => Err(err!(ValueTooLow, VALID_SPEEDS, "{} is negative", value)),
+                I::PosOverflow => Err(err!(
+                    ValueTooHigh,
+                    VALID_SPEEDS,
+                    "Fan speed {} is too high",
+                    value
+                )),
+                I::InvalidDigit => match value.as_ref() {
+                    "disengaged" => Ok(Self::Disengaged),
+                    "auto" => Ok(Self::Auto),
+                    "full-speed" => Ok(Self::FullSpeed),
+                    _ => Err(err!(
+                        InvalidValue,
+                        VALID_SPEEDS,
+                        "{} is an invalid fan speed setting",
+                        value
+                    )),
+                },
+                _ => Err(err!(
+                    InvalidValue,
+                    VALID_SPEEDS,
+                    "{} is an invalid fan speed setting",
+                    value
+                )),
+            },
+            Ok(num) => {
+                if (1..=7).contains(&num) {
+                    Ok(Self::Level(num))
+                } else {
+                    Err(err!(
+                        InvalidValue,
+                        VALID_SPEEDS,
+                        "{} is an invalid fan speed setting",
+                        value
+                    ))
+                }
+            }
         }
     }
 }
 
-pub fn set_fanspeed(fs: FanSpeed) {
+pub fn set_fanspeed(fs: FanSpeed) -> Result<(), Error> {
     let err = OpenOptions::new()
         .append(true)
         .read(true)
         .open("/proc/acpi/ibm/fan");
+
     let mut file = match err {
         Err(e) => match e.kind() {
-            ErrorKind::NotFound => panic!("file not found! are you not using a ThinkPad?"),
-            ErrorKind::PermissionDenied => panic!("permission denied"),
-            _ => panic!("{}", e),
+            io::ErrorKind::NotFound => {
+                return Err(err!(
+                    FileNotFound,
+                    "Did you load thinkpad_acpi?",
+                    "File not /proc/acpi/ibm/fan not found."
+                ))
+            }
+            io::ErrorKind::PermissionDenied => {
+                return Err(err!(
+                    PermissionDenied,
+                    "Do you have root permissions?",
+                    "while trying to write to /proc/acpi/ibm/fan"
+                ))
+            }
+            _ => return Err(generic_err!(e)),
         },
         Ok(f) => f,
     };
 
     let mut s = String::new();
-    let _ = file.read_to_string(&mut s);
+    let _ = match file.read_to_string(&mut s) {
+        Ok(_) => (),
+        Err(e) => return Err(generic_err!(e)),
+    };
 
     if !s.contains("command") {
-        panic!("no way to control the fan speed, did you set your kernel parameters correctly?");
+        return Err(err!(
+            FanControlDisabled,
+            "Did you load thinkpad_acpi with fan_control=1?",
+            "Can't control the fan speed"
+        ));
     }
 
     let err = file.write(format!("level {}", fs.to_string()).as_bytes());
 
     match err {
-        Ok(_) => (),
+        Ok(_) => Ok(()),
         Err(e) => match e.kind() {
-            ErrorKind::InvalidInput => {
-                panic!("failed to set the fan speed! did you set your kernel parameters correctly?")
+            io::ErrorKind::InvalidInput => {
+                return Err(err!(
+                    FanControlDisabled,
+                    "Did you load thinkpad_acpi with fan_control=1",
+                    "Can't control the fan speed. "
+                ));
             }
             _ => panic!("{e}"),
         },
     }
 }
 
-pub fn get_rpm() -> u16 {
+pub fn get_rpm() -> Result<u16, Error> {
     let err = OpenOptions::new().read(true).open("/proc/acpi/ibm/fan");
+
     let mut file = match err {
         Err(e) => match e.kind() {
-            ErrorKind::NotFound => panic!("file not found! are you not using a ThinkPad?"),
-            ErrorKind::PermissionDenied => panic!("permission denied"),
-            _ => panic!("{}", e),
+            io::ErrorKind::NotFound => {
+                return Err(err!(
+                    FileNotFound,
+                    "Did you load thinkpad_acpi?",
+                    "File not /proc/acpi/ibm/fan not found"
+                ))
+            }
+            io::ErrorKind::PermissionDenied => {
+                return Err(err!(
+                    PermissionDenied,
+                    "Do you have sufficient permissions?",
+                    "while trying to read from /proc/acpi/ibm/fan"
+                ))
+            }
+            _ => return Err(generic_err!(e)),
         },
         Ok(f) => f,
     };
@@ -113,10 +230,46 @@ pub fn get_rpm() -> u16 {
         .1
         .trim();
 
-    rpm.parse::<u16>().unwrap()
+    Ok(rpm.parse::<u16>().expect("Failed to parse RPM"))
 }
 
-pub fn get_temps() -> Temperatures {
+pub fn get_fanspeed() -> Result<String, Error> {
+    let err = OpenOptions::new().read(true).open("/proc/acpi/ibm/fan");
+
+    let mut file = match err {
+        Err(e) => match e.kind() {
+            io::ErrorKind::NotFound => {
+                return Err(err!(
+                    FileNotFound,
+                    "Did you load thinkpad_acpi?",
+                    "File not /proc/acpi/ibm/fan not found"
+                ))
+            }
+            io::ErrorKind::PermissionDenied => {
+                return Err(err!(
+                    PermissionDenied,
+                    "Do you have sufficient permissions?",
+                    "while trying to read from /proc/acpi/ibm/fan"
+                ))
+            }
+            _ => return Err(generic_err!(e)),
+        },
+        Ok(f) => f,
+    };
+
+    let mut s = String::new();
+    let _ = file.read_to_string(&mut s);
+
+    let fanspeed = s.split('\n').collect::<Vec<&str>>()[2] // get third line
+        .split_once(":")
+        .unwrap()
+        .1
+        .trim();
+
+    Ok(fanspeed.into())
+}
+
+pub fn get_temps() -> Result<Temperatures, Error> {
     let output = std::process::Command::new("sensors")
         .arg("-j")
         .output()
@@ -182,12 +335,10 @@ pub fn get_temps() -> Temperatures {
         res.cores.insert(k.to_owned(), coretemp);
     }
 
-    res
+    Ok(res)
 }
 
-pub fn get_cores() -> Vec<u8> {
-    // modern ThinkPads may have weird core ids
-
+pub fn get_cores() -> Result<Vec<u8>, ErrorKind> {
     let output = std::process::Command::new("sensors")
         .arg("-j")
         .output()
@@ -205,7 +356,7 @@ pub fn get_cores() -> Vec<u8> {
 
     let mut res = Vec::new();
 
-    for (key, value) in coretemps {
+    for key in coretemps.keys() {
         let k = key.as_str();
 
         if !k.contains("Core ") {
@@ -222,5 +373,5 @@ pub fn get_cores() -> Vec<u8> {
         res.push(coreid)
     }
 
-    res
+    Ok(res)
 }
