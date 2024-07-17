@@ -1,9 +1,0 @@
-[package]
-name = "tpfanspeed"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-gtk = { version = "0.9.0", package = "gtk4", features = ["v4_12"] }
-glib = "0.20.0"
-libtpfanspeed = { path = "../libtpfanspeed" }
