@@ -7,24 +7,11 @@ use tpfanctl::*;
 struct Args {
     #[arg(help = "The fan speed in question")]
     fanspeed: String,
-
-    #[arg(
-        help = "print the version of this application",
-        short = 'v',
-        long = "version",
-        default_value_t = false
-    )]
-    print_version: bool,
 }
 
 fn main() {
     color_eyre::install().unwrap();
     let args = Args::parse();
-
-    if args.print_version {
-        info(format!("tpfanctl version {VERSION}"));
-        std::process::exit(0);
-    }
 
     LOGLEVEL.set(LogLevel::Help).unwrap();
 

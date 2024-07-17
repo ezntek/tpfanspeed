@@ -269,10 +269,21 @@ pub fn get_fanspeed() -> Result<String, Error> {
 }
 
 pub fn get_temps() -> Result<Temperatures, Error> {
-    let output = std::process::Command::new("sensors")
-        .arg("-j")
-        .output()
-        .unwrap();
+    let err = std::process::Command::new("sensors").arg("-j").output();
+
+    let output = match err {
+        Ok(output) => output,
+        Err(e) => match e.kind() {
+            io::ErrorKind::NotFound => {
+                return Err(err!(
+                    FileNotFound,
+                    "Do you have lm_sensors installed?",
+                    "Could not access sensors command"
+                ))
+            }
+            _ => panic!("{}", e),
+        },
+    };
 
     let stdout = String::from_utf8_lossy(&output.stdout);
 
