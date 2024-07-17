@@ -28,19 +28,19 @@ pub enum ErrorKind {
 #[macro_export]
 macro_rules! err {
     ($kind:expr) => {
-        crate::error::Error::without_description_help($kind)
+        $crate::error::Error::without_description_help($kind)
     };
     ($kind:ident,$description:expr) => {
-        crate::error::Error::without_help(crate::error::ErrorKind::$kind, $description.to_string())
+        $crate::error::Error::without_help($crate::error::ErrorKind::$kind, $description.to_string())
     };
     ($kind:ident,$help: expr, $description: expr) => {
-        crate::error::Error::new(crate::error::ErrorKind::$kind, $description.to_string(), $help.to_string())
+        $crate::error::Error::new($crate::error::ErrorKind::$kind, $description.to_string(), $help.to_string())
     };
     ($kind:ident,$help:expr, $format:expr, $($fmt_arg:tt)*) => {
-        crate::error::Error::new(crate::error::ErrorKind::$kind, format!($format, $($fmt_arg)*), $help.to_string())
+        $crate::error::Error::new($crate::error::ErrorKind::$kind, format!($format, $($fmt_arg)*), $help.to_string())
     };
     ($kind:ident,$format:expr,$($fmt_arg:tt)*) => {
-        crate::error::Error::without_help(crate::error::ErrorKind::$kind, format!($format, $($fmt_arg)*))
+        $crate::error::Error::without_help($crate::error::ErrorKind::$kind, format!($format, $($fmt_arg)*))
     };
 }
 
@@ -48,7 +48,7 @@ macro_rules! err {
 /// Quickly construct a Generic Error.
 macro_rules! generic_err {
     ($err:expr) => {
-        crate::err!(GenericError, "Some error occurred: {}", $err)
+        $crate::err!(GenericError, "Some error occurred: {}", $err)
     };
 }
 

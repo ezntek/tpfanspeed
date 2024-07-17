@@ -10,14 +10,14 @@ use error::*;
 
 use serde_json::Value;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct CoreTemperature {
     pub temp: u8,
     pub max: u8,
     pub critical: u8,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Temperatures {
     pub avg: u8,
     pub cores: HashMap<String, CoreTemperature>,
@@ -60,12 +60,13 @@ impl std::fmt::Display for CoreTemperature {
 
 impl std::fmt::Display for Temperatures {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Average: {}°C\n", self.avg)?;
+        writeln!(f, "Average: {}°C", self.avg)?;
+
         for (i, (corename, coretemp)) in self.cores.iter().enumerate() {
             write!(f, "{}: {}", corename, coretemp)?;
 
             if i != self.cores.len() - 1 {
-                write!(f, "\n")?;
+                writeln!(f)?;
             }
         }
         Ok(())
@@ -167,33 +168,31 @@ pub fn set_fanspeed(fs: FanSpeed) -> Result<(), Error> {
     };
 
     let mut s = String::new();
-    let _ = match file.read_to_string(&mut s) {
+    match file.read_to_string(&mut s) {
         Ok(_) => (),
         Err(e) => return Err(generic_err!(e)),
     };
 
     if !s.contains("command") {
-        return Err(err!(
+        Err(err!(
             FanControlDisabled,
             "Did you load thinkpad_acpi with fan_control=1?",
             "Can't control the fan speed"
-        ));
-    }
+        ))
+    } else {
+        let err = file.write(format!("level {fs}").as_bytes());
 
-    let err = file.write(format!("level {}", fs.to_string()).as_bytes());
-
-    match err {
-        Ok(_) => Ok(()),
-        Err(e) => match e.kind() {
-            io::ErrorKind::InvalidInput => {
-                return Err(err!(
+        match err {
+            Ok(_) => Ok(()),
+            Err(e) => match e.kind() {
+                io::ErrorKind::InvalidInput => Err(err!(
                     FanControlDisabled,
                     "Did you load thinkpad_acpi with fan_control=1",
                     "Can't control the fan speed. "
-                ));
-            }
-            _ => panic!("{e}"),
-        },
+                )),
+                _ => panic!("{e}"),
+            },
+        }
     }
 }
 
@@ -225,7 +224,7 @@ pub fn get_rpm() -> Result<u16, Error> {
     let _ = file.read_to_string(&mut s);
 
     let rpm = s.split('\n').collect::<Vec<&str>>()[1] // get second line
-        .split_once(":")
+        .split_once(':')
         .unwrap()
         .1
         .trim();
@@ -261,7 +260,7 @@ pub fn get_fanspeed() -> Result<String, Error> {
     let _ = file.read_to_string(&mut s);
 
     let fanspeed = s.split('\n').collect::<Vec<&str>>()[2] // get third line
-        .split_once(":")
+        .split_once(':')
         .unwrap()
         .1
         .trim();
@@ -306,7 +305,7 @@ pub fn get_temps() -> Result<Temperatures, Error> {
         }
 
         let coreid = k
-            .split_once(" ")
+            .split_once(' ')
             .expect("expected Core and an ID")
             .1
             .parse::<u8>()
@@ -364,7 +363,7 @@ pub fn get_cores() -> Result<Vec<u8>, ErrorKind> {
         }
 
         let coreid = k
-            .split_once(" ")
+            .split_once(' ')
             .expect("expected Core and an ID")
             .1
             .parse::<u8>()
