@@ -24,6 +24,10 @@ pub enum ErrorKind {
 /// Function signatures include:
 ///  * `kind: err::ErrorKind`
 ///  * `kind: err::ErrorKind, description: impl ToString`
+///  * `kind: err::ErrorKind, help: impl ToString, description: impl ToString`
+///  * `kind: err::ErrorKind, help: impl ToString, format: &str, format args`
+///  * `kind: err::ErrorKind, format: &str, format args`
+///
 ///
 #[macro_export]
 macro_rules! err {

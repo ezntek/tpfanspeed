@@ -6,23 +6,25 @@ use std::{
     io::{self, Read, Write},
 };
 
+use serde::{Deserialize, Serialize};
+
 use error::*;
 
 use serde_json::Value;
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 pub struct CoreTemperature {
     pub temp: u8,
     pub max: u8,
     pub critical: u8,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Temperatures {
     pub avg: u8,
     pub cores: HashMap<String, CoreTemperature>,
 }
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum FanSpeed {
     Level(u8),
     FullSpeed,
