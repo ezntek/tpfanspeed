@@ -1,7 +1,7 @@
 pub mod error;
 
 use std::{
-    collections::HashMap,
+    collections::BTreeMap,
     fs::OpenOptions,
     io::{self, Read, Write},
 };
@@ -22,7 +22,7 @@ pub struct CoreTemperature {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Temperatures {
     pub avg: u8,
-    pub cores: HashMap<String, CoreTemperature>,
+    pub cores: BTreeMap<String, CoreTemperature>,
 }
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum FanSpeed {
@@ -89,7 +89,7 @@ impl Temperatures {
     pub fn new() -> Self {
         Self {
             avg: 0,
-            cores: HashMap::new(),
+            cores: BTreeMap::new(),
         }
     }
 }
@@ -295,9 +295,9 @@ pub fn get_temps() -> Result<Temperatures, Error> {
         serde_json::from_str(&stdout).expect("failed to parse JSON");
 
     res.avg = json_value
-        .get("thinkpad-isa-0000")
+        .get("coretemp-isa-0000")
         .expect("failed to find key")
-        .get("CPU")
+        .get("Package id 0")
         .expect("failed to find key")
         .get("temp1_input")
         .expect("failed to find key")
