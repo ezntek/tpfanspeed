@@ -13,7 +13,8 @@ fn main() {
     color_eyre::install().unwrap();
     let args = Args::parse();
 
-    LOGLEVEL.set(LogLevel::Help).unwrap();
+    PRINT_ERRORS.set(true).unwrap();
+    PRETTY_PRINT.set(true).unwrap();
 
     let fs = FanSpeed::from_string(args.fanspeed).unwrap_or_else(|e| err(e));
     Application::new().set_fan(fs);

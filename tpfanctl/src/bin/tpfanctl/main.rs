@@ -4,6 +4,8 @@ use tpfanctl::*;
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
+    #[command(about = "Print the dashboard")]
+    Dash,
     #[command(about = "Print the CPU temperatures")]
     Temp,
     #[command(about = "Print the fan's RPM")]
@@ -23,37 +25,33 @@ struct Args {
     #[arg(
         short = 'q',
         long,
-        default_value_t = false,
-        help = "do not print any information, except for errors."
+        default_value_t = true,
+        help = "do not print any errors, nor help."
     )]
     quiet: bool,
 
     #[arg(
+        short = 'D',
         long,
         default_value_t = false,
-        help = "do not print anything, including errors."
+        help = "do not pretty-print data."
     )]
-    extra_quiet: bool,
+    disable_pretty_print: bool,
 }
 
 fn main() {
     color_eyre::install().unwrap();
 
     let args = Args::parse();
+
+    PRINT_ERRORS.set(args.quiet).unwrap();
+    PRETTY_PRINT.set(!args.disable_pretty_print).unwrap();
+
     let app = Application::new();
 
-    let loglevel = if args.quiet {
-        LogLevel::Error
-    } else if args.extra_quiet {
-        LogLevel::Quiet
-    } else {
-        LogLevel::Help
-    };
-
-    LOGLEVEL.set(loglevel).unwrap();
-
     match args.command {
-        Command::Temp => app.temp(),
+        Command::Dash => app.get_dash(),
+        Command::Temp => app.get_temp(),
         Command::Fan { fanspeed } => match fanspeed {
             Some(fs) => {
                 let res = libtpfs::FanSpeed::from_string(fs);
@@ -65,7 +63,7 @@ fn main() {
             }
             None => app.get_fan(),
         },
-        Command::Rpm => app.rpm(),
+        Command::Rpm => app.get_rpm(),
         Command::Version => info(format!("tpfanctl version {VERSION}")),
     }
 }

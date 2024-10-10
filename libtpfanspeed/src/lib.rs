@@ -22,7 +22,7 @@ pub struct CoreTemperature {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Temperatures {
     pub avg: u8,
-    pub cores: BTreeMap<String, CoreTemperature>,
+    pub cores: BTreeMap<u8, CoreTemperature>,
 }
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum FanSpeed {
@@ -344,7 +344,13 @@ pub fn get_temps() -> Result<Temperatures, Error> {
 
         let coretemp = CoreTemperature::new(temp, max, critical);
 
-        res.cores.insert(k.to_owned(), coretemp);
+        let core_id = k
+            .split_whitespace()
+            .nth(1)
+            .and_then(|temp| temp.parse::<u8>().ok())
+            .expect("something is seriously wrong. the core id doesn't begin with core!");
+
+        res.cores.insert(core_id, coretemp);
     }
 
     Ok(res)

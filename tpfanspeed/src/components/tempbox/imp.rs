@@ -69,10 +69,7 @@ impl ObjectImpl for TemperatureBox {
                     glib::timeout_future_seconds(1).await;
                     {
                         let temps = libtpfs::get_temps().expect("cant get temps lol");
-                        let core_temp = temps
-                            .cores
-                            .get(&format!("Core {core_id}"))
-                            .expect("cant get core temp lol");
+                        let core_temp = temps.cores.get(&core_id).expect("cant get core temp lol");
 
                         let mut temp = RefCell::borrow_mut(&temperature);
                         *temp = core_temp.temp as u32;
