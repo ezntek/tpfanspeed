@@ -32,8 +32,7 @@ pub enum FanSpeed {
     Auto,
 }
 
-const VALID_SPEEDS: &'static str =
-    "Valid fan speeds range from 0-7, auto, full-speed and disengaged";
+const VALID_SPEEDS: &str = "Valid fan speeds range from 0-7, auto, full-speed and disengaged";
 
 impl std::fmt::Display for FanSpeed {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

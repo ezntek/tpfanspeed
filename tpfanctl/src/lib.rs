@@ -154,16 +154,12 @@ impl Application {
         // auto, 0, 1, 2, 3, 4, 5, 6, 7, full-speed, disengaged
         // [*-*-*-*-*-*-*-*-*-*-*-*]
 
-        println!(
-            "{} {}\n",
-            "Your fan speed setting is",
-            fanspeed.bold().yellow()
-        );
+        println!("Your fan speed settings is {}\n", fanspeed.bold().yellow());
 
         print!("[");
 
         for (idx, level) in levels.iter().enumerate() {
-            if level == &&fanspeed {
+            if level == &fanspeed {
                 print!("{}", "#".yellow().bold());
             } else {
                 print!("{}", "*".red());
