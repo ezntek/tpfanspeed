@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use color_eyre::owo_colors::OwoColorize;
 use libtpfanspeed as libtpfs;
 use tpfanctl::*;
 
@@ -50,7 +51,7 @@ fn main() {
     let app = Application::new();
 
     match args.command {
-        Command::Dash => app.get_dash(),
+        Command::Dash => app.dash(),
         Command::Temp => app.get_temp(),
         Command::Fan { fanspeed } => match fanspeed {
             Some(fs) => {
@@ -64,6 +65,6 @@ fn main() {
             None => app.get_fan(),
         },
         Command::Rpm => app.get_rpm(),
-        Command::Version => info(format!("tpfanctl version {VERSION}")),
+        Command::Version => info(format!("tpfanctl version {}", VERSION.cyan().bold())),
     }
 }

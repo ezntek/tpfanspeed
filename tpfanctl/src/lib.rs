@@ -97,15 +97,16 @@ impl Application {
     pub fn get_rpm(&self) {
         let rpm = libtpfs::get_rpm().unwrap_or_else(|e| err(e));
 
-        if self.pretty_print {
-            println!(
-                "Your fan is spinning at {} {}",
-                rpm.green().bold(),
-                "RPM".bold()
-            );
-        } else {
+        if !self.pretty_print {
             println!("{rpm}");
+            return;
         }
+
+        println!(
+            "Your fan is spinning at {} {}",
+            rpm.green().bold(),
+            "RPM".bold()
+        );
     }
 
     pub fn set_fan(&self, fanspeed: libtpfs::FanSpeed) {
@@ -185,7 +186,7 @@ impl Application {
         println!();
     }
 
-    pub fn get_dash(&self) {
+    pub fn get_dash_once(&self) {
         println!("{}", "==============================".dimmed());
         println!("{}", "DASHBOARD".bold().cyan());
         println!("{}", "==============================".dimmed());
@@ -195,5 +196,9 @@ impl Application {
         println!("{}", "==============================".dimmed());
         self.get_rpm();
         println!("{}", "==============================".dimmed());
+    }
+
+    pub fn dash(&self) {
+        self.get_dash_once();
     }
 }
