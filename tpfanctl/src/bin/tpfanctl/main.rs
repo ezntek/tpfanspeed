@@ -1,5 +1,4 @@
 use clap::{Parser, Subcommand};
-use color_eyre::owo_colors::OwoColorize;
 use libtpfanspeed as libtpfs;
 use tpfanctl::*;
 
@@ -17,8 +16,9 @@ pub enum Command {
     Version,
 }
 
+/// NOTE: The `version` option is not used, as it will be customized
 #[derive(Parser, Debug)]
-#[command(author, version, about = "A simple ThinkPad Fan control tool. pass `-h` for help.", long_about = None)]
+#[command(author, about = "A simple ThinkPad Fan control tool. pass `-h` for help.", long_about = None)]
 struct Args {
     #[command(subcommand)]
     command: Command,
@@ -65,6 +65,6 @@ fn main() {
             None => app.get_fan(),
         },
         Command::Rpm => app.get_rpm(),
-        Command::Version => info(format!("tpfanctl version {}", VERSION.cyan().bold())),
+        Command::Version => version(),
     }
 }

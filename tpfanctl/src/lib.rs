@@ -1,12 +1,15 @@
 use std::sync::OnceLock;
 
 use color_eyre::owo_colors::OwoColorize;
-use colored::Colorize;
 use libtpfanspeed as libtpfs;
 
 pub static VERSION: &str = "0.2.0";
 pub static PRINT_ERRORS: OnceLock<bool> = OnceLock::new();
 pub static PRETTY_PRINT: OnceLock<bool> = OnceLock::new();
+
+pub fn version() {
+    info(format!("tpfanctl version {}", VERSION.cyan().bold()))
+}
 
 pub fn err(err: libtpfs::error::Error) -> ! {
     if *PRINT_ERRORS.get().unwrap() {
