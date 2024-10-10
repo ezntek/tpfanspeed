@@ -2,8 +2,6 @@ use super::TemperatureBox;
 use glib::Object;
 use gtk::prelude::*;
 
-use libtpfanspeed as libtpfs;
-
 mod imp;
 
 glib::wrapper! {
