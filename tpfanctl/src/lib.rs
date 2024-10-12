@@ -1,12 +1,15 @@
-use std::sync::OnceLock;
+use std::{sync::OnceLock, time::Duration};
 
 use color_eyre::owo_colors::OwoColorize;
-use colored::Colorize;
 use libtpfanspeed as libtpfs;
 
 pub static VERSION: &str = "0.2.0";
 pub static PRINT_ERRORS: OnceLock<bool> = OnceLock::new();
 pub static PRETTY_PRINT: OnceLock<bool> = OnceLock::new();
+
+pub fn version() {
+    info(format!("tpfanctl version {}", VERSION.cyan().bold()))
+}
 
 pub fn err(err: libtpfs::error::Error) -> ! {
     if *PRINT_ERRORS.get().unwrap() {
@@ -97,15 +100,16 @@ impl Application {
     pub fn get_rpm(&self) {
         let rpm = libtpfs::get_rpm().unwrap_or_else(|e| err(e));
 
-        if self.pretty_print {
-            println!(
-                "Your fan is spinning at {} {}",
-                rpm.green().bold(),
-                "RPM".bold()
-            );
-        } else {
+        if !self.pretty_print {
             println!("{rpm}");
+            return;
         }
+
+        println!(
+            "Your fan is spinning at {} {}",
+            rpm.green().bold(),
+            "RPM".bold()
+        );
     }
 
     pub fn set_fan(&self, fanspeed: libtpfs::FanSpeed) {
@@ -154,16 +158,12 @@ impl Application {
         // auto, 0, 1, 2, 3, 4, 5, 6, 7, full-speed, disengaged
         // [*-*-*-*-*-*-*-*-*-*-*-*]
 
-        println!(
-            "{} {}\n",
-            "Your fan speed setting is",
-            fanspeed.bold().yellow()
-        );
+        println!("Your fan speed setting is {}\n", fanspeed.bold().yellow());
 
         print!("[");
 
         for (idx, level) in levels.iter().enumerate() {
-            if level == &&fanspeed {
+            if level == &fanspeed {
                 print!("{}", "#".yellow().bold());
             } else {
                 print!("{}", "*".red());
@@ -189,7 +189,7 @@ impl Application {
         println!();
     }
 
-    pub fn get_dash(&self) {
+    pub fn get_dash_once(&self) {
         println!("{}", "==============================".dimmed());
         println!("{}", "DASHBOARD".bold().cyan());
         println!("{}", "==============================".dimmed());
@@ -199,5 +199,42 @@ impl Application {
         println!("{}", "==============================".dimmed());
         self.get_rpm();
         println!("{}", "==============================".dimmed());
+    }
+
+    pub fn dash(&self) {
+        const ESC: char = 27 as char;
+
+        ctrlc::set_handler(move || {
+            // exit alt mode
+            print!("{ESC}[?1049l");
+            info("exiting...");
+            std::process::exit(0);
+        })
+        .expect("could not set ctrl c handler");
+
+        // enter alt mode, clear screen, go to 0,0
+        print!("{ESC}[?1049h{ESC}[2J{ESC}[H");
+
+        self.get_dash_once();
+        std::thread::sleep(Duration::from_secs(1));
+
+        loop {
+            print!("{ESC}[4;0H"); // go to 4,0
+            self.get_temp();
+
+            // move 1 line down and to the beginning
+            // go to the end of "Your fan speed setting is  ",
+            // clear the rest, go back to the begnning
+            print!("{ESC}[1E{ESC}[26C{ESC}[2K\r");
+            self.get_fan();
+
+            // move 1 line down and to the beginning
+            // go to the end of "Your fan is spinning at ",
+            // clear the rest, go back to the begnning
+            print!("{ESC}[1E{ESC}[24C{ESC}[2K\r");
+            self.get_rpm();
+
+            std::thread::sleep(Duration::from_secs(1));
+        }
     }
 }
