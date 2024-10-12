@@ -1,16 +1,16 @@
 pub mod error;
 
+use error::*;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::{
     collections::BTreeMap,
     fs::OpenOptions,
     io::{self, Read, Write},
 };
 
-use serde::{Deserialize, Serialize};
-
-use error::*;
-
-use serde_json::Value;
+// Represents the output of `sensors -j`. Type alias for clarity.
+pub type SensorsOutput = String;
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 pub struct CoreTemperature {
@@ -269,9 +269,8 @@ pub fn get_fanspeed() -> Result<String, Error> {
     Ok(fanspeed.into())
 }
 
-pub fn get_temps() -> Result<Temperatures, Error> {
+pub fn get_sensors_output() -> Result<SensorsOutput, Error> {
     let err = std::process::Command::new("sensors").arg("-j").output();
-
     let output = match err {
         Ok(output) => output,
         Err(e) => match e.kind() {
@@ -286,23 +285,15 @@ pub fn get_temps() -> Result<Temperatures, Error> {
         },
     };
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+}
 
+pub fn get_temps_from_sensors_output(sensors_output: SensorsOutput) -> Result<Temperatures, Error> {
     let mut res = Temperatures::new();
-
     let json_value: serde_json::Value =
-        serde_json::from_str(&stdout).expect("failed to parse JSON");
+        serde_json::from_str(&sensors_output).expect("failed to parse JSON");
 
-    res.avg = json_value
-        .get("coretemp-isa-0000")
-        .expect("failed to find key")
-        .get("Package id 0")
-        .expect("failed to find key")
-        .get("temp1_input")
-        .expect("failed to find key")
-        .as_f64()
-        .expect("expected a float, got something else") as u8;
-
+    // get individual core temperatures
     let coretemps = json_value
         .get("coretemp-isa-0000")
         .expect("failed to find key")
@@ -312,6 +303,7 @@ pub fn get_temps() -> Result<Temperatures, Error> {
     for (key, value) in coretemps {
         let k = key.as_str();
 
+        // ignore other data
         if !k.contains("Core ") {
             continue;
         }
@@ -352,7 +344,75 @@ pub fn get_temps() -> Result<Temperatures, Error> {
         res.cores.insert(core_id, coretemp);
     }
 
+    // get average temperature if `Package id 0` is a key
+    if let Some(package_id_0) = json_value
+        .get("coretemp-isa-0000")
+        .expect("failed to find key")
+        .get("Package id 0")
+    {
+        res.avg = package_id_0
+            .get("temp1_input")
+            .expect("failed to find key")
+            .as_f64()
+            .expect("expected a float, got something else") as u8;
+    } else {
+        // manually calculate average
+        let temps_sum = res.cores.iter().map(|(_, v)| v.temp).sum::<u8>();
+        res.avg = temps_sum / res.cores.len() as u8;
+    }
+
     Ok(res)
+}
+
+pub fn get_core_temp_from_sensors_output(
+    sensors_output: SensorsOutput,
+    core_id: u8,
+) -> Result<CoreTemperature, Error> {
+    let json_value: serde_json::Value =
+        serde_json::from_str(&sensors_output).expect("failed to parse JSON");
+
+    // get individual core temperatures
+    let coretemps = json_value
+        .get("coretemp-isa-0000")
+        .expect("failed to find key")
+        .as_object()
+        .expect("failed to find key");
+
+    let core_temp = coretemps.get(&format!("Core {core_id}"));
+    if let Some(value) = core_temp {
+        let temp = value
+            .get(format!("temp{}_input", core_id + 2))
+            .expect("core id somehow invalid?")
+            .as_f64()
+            .expect("expected a float, got something else") as u8;
+
+        let max = value
+            .get(format!("temp{}_max", core_id + 2))
+            .expect("core id somehow invalid?")
+            .as_f64()
+            .expect("expected a float, got something else") as u8;
+
+        let critical = value
+            .get(format!("temp{}_crit", core_id + 2))
+            .expect("core id somehow invalid?")
+            .as_f64()
+            .expect("expected a float, got something else") as u8;
+
+        let coretemp = CoreTemperature::new(temp, max, critical);
+        Ok(coretemp)
+    } else {
+        Err(err!(InvalidValue, "Core {} is not valid!", core_id))
+    }
+}
+
+pub fn get_temps() -> Result<Temperatures, Error> {
+    let sensors_output = get_sensors_output()?;
+    get_temps_from_sensors_output(sensors_output) // Propagate both the result and error
+}
+
+pub fn get_core_temp(core_id: u8) -> Result<CoreTemperature, Error> {
+    let sensors_output = get_sensors_output()?;
+    get_core_temp_from_sensors_output(sensors_output, core_id)
 }
 
 pub fn get_cores() -> Result<Vec<u8>, ErrorKind> {

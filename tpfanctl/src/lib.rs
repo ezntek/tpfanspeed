@@ -1,4 +1,4 @@
-use std::sync::OnceLock;
+use std::{sync::OnceLock, time::Duration};
 
 use color_eyre::owo_colors::OwoColorize;
 use libtpfanspeed as libtpfs;
@@ -158,7 +158,7 @@ impl Application {
         // auto, 0, 1, 2, 3, 4, 5, 6, 7, full-speed, disengaged
         // [*-*-*-*-*-*-*-*-*-*-*-*]
 
-        println!("Your fan speed settings is {}\n", fanspeed.bold().yellow());
+        println!("Your fan speed setting is {}\n", fanspeed.bold().yellow());
 
         print!("[");
 
@@ -202,6 +202,39 @@ impl Application {
     }
 
     pub fn dash(&self) {
+        const ESC: char = 27 as char;
+
+        ctrlc::set_handler(move || {
+            // exit alt mode
+            print!("{ESC}[?1049l");
+            info("exiting...");
+            std::process::exit(0);
+        })
+        .expect("could not set ctrl c handler");
+
+        // enter alt mode, clear screen, go to 0,0
+        print!("{ESC}[?1049h{ESC}[2J{ESC}[H");
+
         self.get_dash_once();
+        std::thread::sleep(Duration::from_secs(1));
+
+        loop {
+            print!("{ESC}[4;0H"); // go to 4,0
+            self.get_temp();
+
+            // move 1 line down and to the beginning
+            // go to the end of "Your fan speed setting is  ",
+            // clear the rest, go back to the begnning
+            print!("{ESC}[1E{ESC}[26C{ESC}[2K\r");
+            self.get_fan();
+
+            // move 1 line down and to the beginning
+            // go to the end of "Your fan is spinning at ",
+            // clear the rest, go back to the begnning
+            print!("{ESC}[1E{ESC}[24C{ESC}[2K\r");
+            self.get_rpm();
+
+            std::thread::sleep(Duration::from_secs(1));
+        }
     }
 }

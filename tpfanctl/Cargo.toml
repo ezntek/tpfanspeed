@@ -13,3 +13,5 @@ readme = "../README.md"
 color-eyre = "0.6.3"
 libtpfanspeed = { path = "../libtpfanspeed" }
 clap = { version = "4.5.9", features = ["derive"]}
+ctrlc = "3.4.5"
+crossterm = "0.28.1"
